@@ -1,0 +1,348 @@
+---
+title: "Max Verstappen vs Lando Norris"
+author: "Siddhant Shah"
+date: "2024-12-05"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      comment = NA,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+# Introduction
+
+-   Formula 1 is a highly competitive sport where a driver's lap time is influenced by a combination of car performance, driving skill, and external conditions. Lap times reflect the delicate balance of maximizing speed while minimizing risks like tire degradation or track limits violations.
+
+-   Factors Influencing Lap Times:
+
+    1.  Tire Compound and Wear: Soft tires are faster but degrade quicker, while hard tires last longer but are slower.
+    2.  Weather Conditions: Rain or heat affects grip levels, tire performance, and lap consistency.
+    3.  Track Characteristics: Each circuit is unique in its layout, with varying degrees of straight-line speed, cornering demands, and elevation changes.
+    4.  Car Setup: Aerodynamics, suspension, and engine power are tailored to the circuit and driver.
+
+-   Beyond these factors, drivers operate under unique conditions, strategies, and driving styles that significantly influence their lap performance. Using the same linear model for all drivers could obscure these individual differences and lead to incorrect conclusions. A single model assumes that all drivers respond similarly to predictors. This overlooks unique relationships, such as differences in Driving Styles, team-wise Car Setup and Strategy Differences.
+
+Thus, instead of using the same model for all drivers, we use different models with the same underlying assumptions (the factors that affect lap time) for each driver and compare the our results as well as the model to quantify the differences in driving styles between the drivers.
+
+For the purposes of this project, I choose to compare models trained on lap times of 4 time World Champion Max Verstappen (Driver #1) and 3 time race winner Lando Norris (Driver #4) from the 2023 season.
+
+## Research Questions
+
+-   Primary Question: How do the factors affecting lap times differ between Lando Norris and Max Verstappen?
+-   Specific Questions:
+    1.  Are the coefficients of key predictors (e.g., tire choice, weather conditions) significantly different between the two drivers?
+    2.  Does the impact of certain variables (e.g., track characteristics) vary between the two drivers?
+    3.  Can statistical comparisons of the models provide insights into differences in driving styles or strategies?
+
+------------------------------------------------------------------------
+
+# The Dataset
+
+The dataset contains the following columns for Formula 1 lap data for each driver and each race in the 2023 season:
+
+> Data was taken from the FastF1 library. Laps where there was an incident on track were not included.
+
+1.  **`year`**: The season year of the race (e.g., 2023).
+2.  **`round`**: The round of the championship (e.g., first race = 1).
+3.  **`DriverNumber`**: A unique identifier for each driver.
+4.  **`LapsLeft`**: The number of laps remaining in the race.
+5.  **`Compound`**: The tire compound used during the lap (e.g., SOFT, MEDIUM, HARD).
+6.  **`TyreLife`**: The age of the tire in laps.
+7.  **`AirTemp`**: The air temperature during the lap (in degrees Celsius).
+8.  **`TrackTemp`**: The temperature of the track surface (in degrees Celsius).
+9.  **`Rain`**: A boolean indicating whether it was raining during the lap (`True` or `False`).
+10. **`HumidityWindInteraction`**: A metric that combines humidity and wind effects on the race conditions.
+11. **`WindChillFactor`**: The perceived effect of wind on temperature, affecting tire and driver conditions.
+12. **`SurfaceGripIndex`**: A metric representing the grip level of the track surface.
+13. **`TrackLength`**: The length of the track (in kilometers).
+14. **`NumberOfCorners`**: The total number of corners on the track.
+15. **`TotalCurvature`**: A sum of curvatures for the entire track, indicating how twisty it is.
+16. **`MaxCurvature`**: The maximum curvature encountered on the track.
+17. **`CurvatureSD`**: The standard deviation of curvature values, indicating variability in track curvature.
+18. **`MinElevation`**: The lowest elevation on the track (in meters).
+19. **`TotalElevationChange`**: The total change in elevation across the track (in meters).
+20. **`ElevationSD`**: The standard deviation of elevation changes, showing track elevation variability.
+21. **`PointsAtStart`**: The number of championship points the driver had before the race.
+22. **`BestLapTimeDelta`**: The difference between the lap time and the best lap time achieved during the session.
+23. **`LapTime`**: The time taken to complete the lap (in seconds).
+
+This dataset includes detailed environmental, track, and performance variables, making it suitable for investigating driver performance dynamics.
+
+```{r importPackages}
+library(openxlsx)
+library(dplyr)
+library(plotly)
+set.seed(42)
+```
+
+```{r readData}
+data = read.xlsx("Data.xlsx")
+cat('Read', nrow(data), 'lines.')
+head(data)
+```
+
+## Pre-Processing
+
+To pre-process the data, I
+
+-   Filter the dataset to include only dry-weather laps for a specific driver,
+-   Remove identifier columns,
+-   Perform stratified sampling across tracks to select the fastest laps, ensuring a balanced representation across races.
+
+```{r pre-processData}
+preprocess_data = function(data, driver)
+{
+  data = data[data$DriverNumber == driver, ]
+  data = data[!data$Rain,]
+  data = subset(data, select = -c(DriverNumber, year, Rain))
+  
+  # Stratified sampling across tracks with the fastest laps
+  data = data |>
+          group_by(round) |>
+          slice_min(order_by = LapTime,
+                    n = ceiling(500 / n_distinct(data$round))) |>
+          ungroup()
+  
+  return(data)
+}
+```
+
+## Processing
+
+Here, I
+
+-   One-hot encode the categorical variables `Compound` which takes 3 values - 'SOFT', 'MEDIUM' and 'HARD', taking 'HARD' as the reference variable.
+-   Introduce interaction terms to capture compound-specific effects of tire degradation.
+-   Clean up redundant data to ensure proper model behavior.
+
+```{r processData}
+process_data = function(data)
+{
+  data = data.frame(
+            data,
+            Compound_Soft = as.numeric(data$Compound == "SOFT"),
+            Compound_Medium = as.numeric(data$Compound == "MEDIUM")
+            # Hard Compound is taken as reference
+          )
+  
+  data$Soft_TyreLife = data$Compound_Soft * data$TyreLife
+  data$Medium_TyreLife = data$Compound_Medium * data$TyreLife
+  
+  data = subset(data, select = -c(Compound))
+  return(data)
+}
+```
+
+------------------------------------------------------------------------
+
+# Statistical Analyses Used
+
+## Multiple Linear Regression
+
+The make_lm function creates a linear regression model (lm) that predicts lap times (LapTime) in Formula 1 races based on various environmental, track, and performance-related factors.
+
+```{r makeLinearModel}
+make_lm = function(data)
+{
+  lap_time_model = lm(LapTime ~ LapsLeft
+                        + TrackLength
+                          + NumberOfCorners + MaxCurvature + TotalCurvature + CurvatureSD
+                          + MinElevation + TotalElevationChange + ElevationSD
+                        + AirTemp + TrackTemp + HumidityWindInteraction
+                          + WindChillFactor + SurfaceGripIndex
+                        + PointsAtStart + BestLapTimeDelta
+                        + TyreLife
+                          + Compound_Soft + Compound_Medium
+                          + Soft_TyreLife + Medium_TyreLife,
+                        data = data)
+  
+  return(lap_time_model)
+}
+```
+
+### Model Pipeline
+
+This function is the complete workflow for processing data, building a linear model, and analyzing its results for a specific Formula 1 driver.
+
+1.  It filters and stratifies the dataset for the specified driver and processes categorical variables and interaction terms.
+2.  it fits a linear regression model to predict lap times based on track, environmental, and performance-related features.
+3.  It prints a summary of the model, and identifies and prints statistically significant predictors ($p < 0.05$).
+4.  Returns the fitted model for further analysis.
+
+```{r ModelPipeline}
+pipeline = function(data, driver)
+{
+  alpha = 0.05
+  
+  data = preprocess_data(data, driver)
+  data = process_data(data)
+  model = make_lm(data)
+  
+  model_summary = summary(model)
+  
+  cat('Summary for Driver #', driver)
+  print(model_summary)
+  
+  coeffs = model_summary$coefficients
+  coeffs = rownames(coeffs[coeffs[,4] < alpha, ])[-1]
+  cat(
+        cat('\n\nSignificant Predictors for Driver #', driver, sep = ''), 
+        coeffs,
+        sep = '\n- '
+      )
+  
+  return(model)
+}
+```
+
+## Two-Sample Testing
+
+We build two models, one for each driver, and compare the coefficients from both models using the standard two-sided Z-test with a significance level of $95\%$. The function returns the Coefficients, Z-scores and the respective $p$-values.
+
+> We only compare coefficients that are significant in both models.
+
+```{r ModelComparison}
+compare_coefficients = function(model1, model2)
+{
+  alpha = 0.05
+  coeffs1 = summary(model1)$coefficients[-1, ]
+  coeffs2 = summary(model2)$coefficients[-1, ]
+  
+  coeffs1[, 1] = ifelse(
+                          (coeffs1[, 4] < alpha)
+                          & (coeffs2[, 4] < alpha),
+                          1, 0
+                        ) * coeffs1[, 1]
+  coeffs2[, 1] = ifelse(
+                          (coeffs1[, 4] < alpha)
+                          & (coeffs2[, 4] < alpha),
+                          1, 0
+                        ) * coeffs2[, 1]
+  
+  diff = coeffs1[, 1] - coeffs2[, 1]
+  se_diff = sqrt(coeffs1[, 2]^2 + coeffs2[, 2]^2)
+  z_scores = diff / se_diff  
+  p_values = 2 * (1 - pnorm(abs(z_scores)))  
+  
+  comparison = data.frame(
+    Coeff_Model1 = coeffs1[, 1],
+    Coeff_Model2 = coeffs2[, 1],
+    Z = z_scores,
+    P_Value = p_values
+  )
+  
+  return(comparison)
+}
+```
+
+------------------------------------------------------------------------
+
+# Results
+
+## Max Verstappen
+
+```{r MaxVerstappen}
+VER = 1
+VER_model = pipeline(data, VER)
+```
+
+-   With a $p$-value that is $< 2.2e-16$, we get the model is significant with an adjusted R-squared of $0.8901$
+
+## Lando Norris
+
+```{r LandoNorris}
+NOR = 4
+NOR_model = pipeline(data, NOR)
+```
+
+-   With a $p$-value that is $< 2.2e-16$, we get the model is significant with an adjusted R-squared of $0.8836$
+
+## Comparative Analysis
+
+### Residuals
+
+We now compare the residuals from each model to understand how we are performing for each driver.
+
+```{r ResidualComparison}
+compare_residuals = function(model1, model2)
+{
+  
+  residuals_df <- data.frame(
+    Residuals = c(residuals(model1), residuals(model2)),
+    Model = factor(c(rep("Model 1", length(residuals(model1))), 
+                     rep("Model 2", length(residuals(model2)))))
+  )
+  
+  plot = plot_ly(
+              residuals_df,
+              x = ~Model,
+              y = ~Residuals,
+              type = "box",
+              color = ~Model      # Color by model
+            ) |>
+          layout(
+              title = "Comparison of Residuals by Model",
+              xaxis = list(title = "Model"),
+              yaxis = list(title = "Residuals")
+            )
+  return(plot)
+}
+```
+
+```{r ResidualPlot, warning=FALSE,message=FALSE}
+compare_residuals(VER_model, NOR_model)
+```
+
+We get the median error for Max is higher than the median error for Lando, meaning that we predict Lando's Lap times more accurately. We don't use the mean here due to its sensitivity to outliers.
+
+### Coefficient Comparison
+
+```{r CoefficientComparison}
+alpha = 0.05
+comparison = compare_coefficients(VER_model, NOR_model)
+cat('The two drivers have significant differences for the following parameters:')
+differences = comparison[comparison$P_Value < alpha, ]
+print(differences)
+```
+
+-   `NumberOfCorners`, `MaxCurvature`, `TotalCurvature`:
+
+    Max has a smaller coefficient for `NumberOfCorners` and `MaxCurvature` than Lando. This is implies that for tracks with more turns, Max's Lap time increases less than Lando's.
+
+-   `TyreLife`:
+
+    Max has a smaller coefficient for `TyreLife` than Lando. This is implies that Max loses less time than Lando as their tires get worn out.
+
+------------------------------------------------------------------------
+
+# Conclusion
+
+1.  **Model Performance**: Both drivers' models showed high predictive accuracy, with adjusted R-squared values of 0.8901 (Verstappen) and 0.8836 (Norris), indicating that the statistical models effectively capture the complexity of lap time determinants.
+
+2.  **Significant Predictors**: Both drivers were similarly influenced by fundamental factors like:
+
+- Laps left in the race (This was used as a stand-in for the fuel left in the car) 
+- Track length 
+- Track curvature
+- Minimum elevation (altitude of the track)
+- Tire compound (particularly soft tires)
+
+3.  **Key Differences in Driving Characteristics**
+
+  -   *Track Complexity Impact*: Verstappen demonstrates more consistent performance on tracks with more corners. His lap times increase less dramatically with additional turns compared to Norris. The analysis showed statistically significant differences in how NumberOfCorners, MaxCurvature, and TotalCurvature affect each driver's lap times.
+  
+  -   *Tire Management*: Verstappen appears to have superior tire management. His lap times are less negatively impacted by tire wear compared to Norris, suggesting more efficient driving techniques or better adaptation to tire degradation.
+  
+4. Challenges: 
+ 
+ - Only dry-weather laps were included, excluding potentially important insights from variable weather conditions
+ - The linear regression model assumes linear relationships between variables, which may not always accurately capture the complex dynamics of Formula 1 racing. The model has an inherent assumption that the same underlying factors affect both drivers similarly, despite the analysis showing differences. With an adjusted R-squared around 0.88-0.89, while good, there's still about 11-12% of lap time variation unexplained by the model
+ - The model doesn't take into account individual race strategies, team dynamics, and car-specific characteristics
