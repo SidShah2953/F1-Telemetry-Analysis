@@ -30,15 +30,10 @@ This repository contains two complementary projects analysing Formula 1 racing d
 
 ```text
 ├── F1 TELEMETRY ANALYSIS/         # Root project directory
-    ├── __pycache__/              # Python bytecode cache
-    ├── .git/                     # Git repository data
-    ├── .vscode/                  # VS Code configuration
     ├── Cache/                    # Temporary data storage
     ├── Data/                     # Raw and processed F1 data
     ├── helpers/                  # Core functionality modules
-    │   ├── __pycache__/
     │   ├── dataCollection/       # F1 data collection modules
-    │   │   ├── __pycache__/
     │   │   ├── driverMetrics.py  # Driver performance data collection
     │   │   ├── raceCalendar.py   # Race schedule handling
     │   │   ├── raceTelemetry.py  # Race telemetry data collection
@@ -50,9 +45,13 @@ This repository contains two complementary projects analysing Formula 1 racing d
     │   └── modelComparison.py   # Model evaluation utilities
     ├── Presentation/            # Project presentation materials
     ├── scripts/                 # Execution scripts
-    │   ├── .gitignore
-    │   ├── dataPipeline.py     # Main data processing pipeline
-    │   └── Driving Style Comparison.Rmd  # R Markdown analysis
+    │   ├── dataCollection/       
+    │   ├── dataPreprocessing.py  
+    │   ├── dataProcessing.py  
+    │   ├── initialization.py     # Sets up all directories
+    ├── .gitignore
+    ├── dataPipeline.py     # Main data processing pipeline
+    └── Driving Style Comparison.Rmd  # R Markdown analysis
     ├── Lap-Time Model Comparison.ipynb    # Jupyter notebook for lap time analysis
     └── README.md               # Project documentation
 ```
@@ -61,17 +60,11 @@ This repository contains two complementary projects analysing Formula 1 racing d
 
 #### Data Collection Modules
 
-- `driverMetrics.py`: Collects and processes driver performance statistics
-- `raceCalendar.py`: Handles F1 race schedule and event information
-- `raceTelemetry.py`: Gathers real-time race telemetry data
-- `trackGeometry.py`: Analyses track characteristics and layout
-- `trackWeather.py`: Collects weather conditions data
-
-#### Processing and Analysis
-
-- `dataPreprocessing.py`: Data cleaning and preparation functions
-- `Lap-Time Model Comparison.ipynb`: Main analysis of lap time predictions
-- `Driving Style Comparison.Rmd`: Statistical analysis of driving styles
+- `helpers/dataCollectcion/driverMetrics.py`: Collects and processes driver performance statistics
+- `helpers/dataCollectcion/raceCalendar.py`: Handles F1 race schedule and event information
+- `helpers/dataCollectcion/raceTelemetry.py`: Gathers real-time race telemetry data
+- `helpers/dataCollectcion/trackGeometry.py`: Analyses track characteristics and layout
+- `helpers/dataCollectcion/trackWeather.py`: Collects weather conditions data
 
 #### Pipeline and Utilities
 
@@ -79,6 +72,12 @@ This repository contains two complementary projects analysing Formula 1 racing d
 - `initialization.py`: Project setup and configuration
 - `modelComparison.py`: Functions for comparing prediction models
 - `misc.py`: Helper functions used throughout the project
+
+#### Processing and Analysis
+
+- `dataPreprocessing.py`: Data cleaning and preparation functions
+- `Lap-Time Model Comparison.ipynb`: Main analysis of lap time predictions
+- `Driving Style Comparison.Rmd`: Statistical analysis of driving styles
 
 #### Documentation and Presentation
 
@@ -92,46 +91,6 @@ This repository contains two complementary projects analysing Formula 1 racing d
 A machine learning approach to predict Formula 1 lap times using various models and comprehensive race data.
 
 > Data was taken from the FastF1 library, for each driver and each race in the 2023 season. Laps where there was an incident on track were not included.
-
-### Data Collection Infrastructure
-
-#### Core Modules
-
-1. **`RaceCalendar` Module**
-   - Retrieves official F1 race schedules
-   - Extracts event details (round number, event name, location, date)
-
-2. **`TrackGeometryAnalyzer` Module**
-   - Track length calculation
-   - Elevation profile analysis
-     - Maximum/minimum elevation
-     - Total elevation change
-     - Elevation standard deviation
-   - Track curvature assessment
-     - Corner count
-     - Total/maximum curvature
-     - Standard deviation
-
-3. **`TrackWeatherAnalyzer` Module**
-   - Air and track temperature
-   - Rainfall data
-   - Humidity-wind interaction
-   - Wind chill factor
-   - Surface grip index
-
-4. **`DriverMetrics` Module**
-   - Points before current event
-   - Best lap times and deltas
-   - Qualifying position
-   - Sector-wise lap times
-   - Tire compound data
-
-5. **`RaceTelemetry` Module**
-   - Lap start times
-   - Lap times
-   - Tire information
-   - Sector times
-   - Track status
 
 ### Model Implementation
 

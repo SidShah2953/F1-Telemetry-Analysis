@@ -1,3 +1,4 @@
 Cache/
 Presentation/
 */__pycache__/*
+.vscode/
