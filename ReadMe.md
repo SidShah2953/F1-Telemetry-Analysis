@@ -43,7 +43,7 @@ This repository contains two complementary projects analysing Formula 1 racing d
     │   ├── initialization.py     # Setup and initialization code
     │   ├── misc.py              # Miscellaneous utility functions
     │   └── modelComparison.py   # Model evaluation utilities
-    ├── Presentation/            # Project presentation materials
+    ├── Reports/            # Project presentation materials
     ├── scripts/                 # Execution scripts
     │   ├── dataCollection/       
     │   ├── dataPreprocessing.py  
