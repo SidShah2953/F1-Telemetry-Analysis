@@ -1,0 +1,1 @@
+{"rule":"ENGLISH_WORD_REPEAT_BEGINNING_RULE","sentence":"^\\QIt prints a summary of the model, and identifies and prints statistically significant predictors (\\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q).\\E$"}
