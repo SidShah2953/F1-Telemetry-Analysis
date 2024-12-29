@@ -17,24 +17,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE)
 ```
 
-# Introduction
-
--   Formula 1 is a highly competitive sport where a driver's lap time is influenced by a combination of car performance, driving skill, and external conditions. Lap times reflect the delicate balance of maximizing speed while minimizing risks like tire degradation or track limits violations.
-
--   Factors Influencing Lap Times:
-
-    1.  Tire Compound and Wear: Soft tires are faster but degrade quicker, while hard tires last longer but are slower.
-    2.  Weather Conditions: Rain or heat affects grip levels, tire performance, and lap consistency.
-    3.  Track Characteristics: Each circuit is unique in its layout, with varying degrees of straight-line speed, cornering demands, and elevation changes.
-    4.  Car Setup: Aerodynamics, suspension, and engine power are tailored to the circuit and driver.
-
--   Beyond these factors, drivers operate under unique conditions, strategies, and driving styles that significantly influence their lap performance. Using the same linear model for all drivers could obscure these individual differences and lead to incorrect conclusions. A single model assumes that all drivers respond similarly to predictors. This overlooks unique relationships, such as differences in Driving Styles, team-wise Car Setup and Strategy Differences.
-
-Thus, instead of using the same model for all drivers, we use different models with the same underlying assumptions (the factors that affect lap time) for each driver and compare the our results as well as the model to quantify the differences in driving styles between the drivers.
-
-For the purposes of this project, I choose to compare models trained on lap times of 4 time World Champion Max Verstappen (Driver #1) and 3 time race winner Lando Norris (Driver #4) from the 2023 season.
-
-## Research Questions
+# Research Questions
 
 -   Primary Question: How do the factors affecting lap times differ between Lando Norris and Max Verstappen?
 -   Specific Questions:
@@ -44,37 +27,9 @@ For the purposes of this project, I choose to compare models trained on lap time
 
 ------------------------------------------------------------------------
 
-# The Dataset
-
-The dataset contains the following columns for Formula 1 lap data for each driver and each race in the 2023 season:
+# The dataset
 
 > Data was taken from the FastF1 library. Laps where there was an incident on track were not included.
-
-1.  **`year`**: The season year of the race (e.g., 2023).
-2.  **`round`**: The round of the championship (e.g., first race = 1).
-3.  **`DriverNumber`**: A unique identifier for each driver.
-4.  **`LapsLeft`**: The number of laps remaining in the race.
-5.  **`Compound`**: The tire compound used during the lap (e.g., SOFT, MEDIUM, HARD).
-6.  **`TyreLife`**: The age of the tire in laps.
-7.  **`AirTemp`**: The air temperature during the lap (in degrees Celsius).
-8.  **`TrackTemp`**: The temperature of the track surface (in degrees Celsius).
-9.  **`Rain`**: A boolean indicating whether it was raining during the lap (`True` or `False`).
-10. **`HumidityWindInteraction`**: A metric that combines humidity and wind effects on the race conditions.
-11. **`WindChillFactor`**: The perceived effect of wind on temperature, affecting tire and driver conditions.
-12. **`SurfaceGripIndex`**: A metric representing the grip level of the track surface.
-13. **`TrackLength`**: The length of the track (in kilometers).
-14. **`NumberOfCorners`**: The total number of corners on the track.
-15. **`TotalCurvature`**: A sum of curvatures for the entire track, indicating how twisty it is.
-16. **`MaxCurvature`**: The maximum curvature encountered on the track.
-17. **`CurvatureSD`**: The standard deviation of curvature values, indicating variability in track curvature.
-18. **`MinElevation`**: The lowest elevation on the track (in meters).
-19. **`TotalElevationChange`**: The total change in elevation across the track (in meters).
-20. **`ElevationSD`**: The standard deviation of elevation changes, showing track elevation variability.
-21. **`PointsAtStart`**: The number of championship points the driver had before the race.
-22. **`BestLapTimeDelta`**: The difference between the lap time and the best lap time achieved during the session.
-23. **`LapTime`**: The time taken to complete the lap (in seconds).
-
-This dataset includes detailed environmental, track, and performance variables, making it suitable for investigating driver performance dynamics.
 
 ```{r importPackages}
 library(openxlsx)
@@ -84,7 +39,7 @@ set.seed(42)
 ```
 
 ```{r readData}
-data = read.xlsx("Data.xlsx")
+data = read.xlsx("Data/Pre-Processed Data/Data.xlsx")
 cat('Read', nrow(data), 'lines.')
 head(data)
 ```
@@ -147,7 +102,7 @@ process_data = function(data)
 
 ## Multiple Linear Regression
 
-The make_lm function creates a linear regression model (lm) that predicts lap times (LapTime) in Formula 1 races based on various environmental, track, and performance-related factors.
+The `make_lm` function creates a linear regression model (lm) that predicts lap times (LapTime) in Formula 1 races based on various environmental, track, and performance-related factors.
 
 ```{r makeLinearModel}
 make_lm = function(data)
