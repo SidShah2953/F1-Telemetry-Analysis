@@ -3,3 +3,5 @@ Presentation/
 */__pycache__/*
 .vscode/
 .Rproj.user
+
+__pycache__/
